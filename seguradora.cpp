@@ -16,21 +16,16 @@ typedef struct reg {
 	char tipo[30];
 }Registro;
 
-typedef struct cab {
-	int offset;
-}Cabecalho;
-
-Cabecalho cabecalho;
 Registro registros[8];
 char buscaCodigos[5];
 char buscaNomes[5];
 
-void insereRegistro(struct reg registro);
+void insereRegistro(Registro registro);
 void pesquisaCodigo(char cod[3]);
 void pesquisaNome(char nome[50]);
-void carregaArquivos();
 void hexDump(size_t, void *, int);
-void obtemCache(int indiceRegistro, int indiceCodigo, int indiceNome);
+void carregaArquivos();
+void obtemCache(int* indiceRegistro, int* indiceCodigo, int* indiceNome);
 void atualizaCache(int indiceRegistro, int indiceCodigo, int indiceNome);
 
 int main(void)
@@ -39,7 +34,6 @@ int main(void)
 	int indiceRegistro;
 	int indiceCodigo;
 	int indiceNome;
-	char arqv[100];
 	
 	DIR* temp = opendir("temp");
 	
@@ -48,7 +42,7 @@ int main(void)
 	else
 		mkdir("temp");
 	
-	obtemCache(indiceRegistro, indiceCodigo, indiceNome);
+	obtemCache(&indiceRegistro, &indiceCodigo, &indiceNome);
 	
 	printf("///////////////  SISTEMA DE REGISTRO DE SEGURADORAS  ///////////////\n");
 	printf("///////////////                MENU                  ///////////////\n");
@@ -74,27 +68,44 @@ int main(void)
 			case 3:
 				//TODO pesquisa por nome
 				break;
-			case 4:
-				{
-				printf("Digite o nome do arquivo a 'receber' o dump (default data.bin): ");
-				scanf("%s", &arqv);
+			case 4: { 
+				FILE *myfile;
+				int c;
+				
+				printf("Escolha o arquivo para fazer o dump:\n\n");
+				printf(" 1. data.bin\n");
+				printf(" 2. cache.bin\n");
+				printf("-1. RETORNAR\n\n");
+				printf("$ ");
+				
+				scanf("%d", &c);
+				
+				if(c == -1) break;
+				
+				switch(c){
+					case 1:
+						myfile = fopen("./temp/data.bin", "rb");
+						break;
+					case 2:
+						myfile = fopen("./temp/cache.bin", "rb");
+						break;	
+				}
 				printf("\n");
-				FILE *myfile = fopen(arqv, "rb");
+				
 				unsigned char buffer[SIZE];
 			    size_t n;
 			    size_t offset = 0;
-			    while ((n = fread(buffer, 1, SIZE, myfile)) > 0)
-			    {
+			    
+			    while ((n = fread(buffer, 1, SIZE, myfile)) > 0){
 			        hexDump(offset, buffer, n);
 			        if (n < SIZE)
-			            break;
+			        	break;
 			        offset += n;
 			    }				
 
     			fclose(myfile);
-   				break;
-   				}
-			case 5:
+    			break;
+			}case 5:
 				carregaArquivos();
 				break;
 		}
@@ -111,65 +122,19 @@ void insereRegistro(Registro registro){
 	
 	FILE *data;
 	
-	data = fopen("data.bin", "r+b");
+	data = fopen("./temp/data.bin", "r+b");
 	
 	if(data == NULL){
 		printf("Arquivo criado!\n");
-		data = fopen("data.bin", "w+b");
-		cabecalho.offset = -1;
-		fwrite(&cabecalho.offset, sizeof(int), 1, data);
-		fwrite(&tamanhoRegistro, sizeof(int), 1, data);
-		fwrite(&buffer, sizeof(char), tamanhoRegistro, data);
-		fclose(data);
-	}else{
-		fread(&cabecalho.offset, sizeof(Cabecalho), 1, data);
-		if(cabecalho.offset == -1){
-			fseek(data, 0, FINAL);
-			fwrite(&tamanhoRegistro, sizeof(int), 1, data);
-			fwrite(&buffer, sizeof(char), tamanhoRegistro, data);
-		}else{
-			fseek(data, cabecalho.offset, INICIO);
-			bool flag;
-			int ultimoMarcador = 0;
-			do{
-				flag = false;
-				int capacidadeRegistro;
-				fread(&capacidadeRegistro, sizeof(int), 1, data);
-				if(capacidadeRegistro > strlen(buffer)){
-					fseek(data, 1, ATUAL);
-					int proximoDisponivel;
-					fread(&proximoDisponivel, sizeof(int), 1, data);
-					fseek(data, -(sizeof(int))-1, ATUAL);
-					fwrite(&buffer, sizeof(char), tamanhoRegistro, data);
-                    if(capacidadeRegistro - strlen(buffer) != 0)
-					    fwrite("*", sizeof(char), 1, data);
-					if(ultimoMarcador == 0){
-						rewind(data);
-					}else{
-						fseek(data, ultimoMarcador, INICIO);
-					}
-					fwrite(&proximoDisponivel, sizeof(int), 1, data);
-					flag = true;
-				}else{
-					fseek(data, 1, ATUAL);
-					ultimoMarcador = ftell(data);
-					int offset;
-					fread(&offset, sizeof(int), 1, data);
-					if(offset == -1){
-						fseek(data, 0, FINAL);
-						fwrite(&tamanhoRegistro, sizeof(int), 1, data);
-						fwrite(&buffer, sizeof(char), tamanhoRegistro, data);
-						flag = true;
-					}else{
-						fseek(data, offset, INICIO);
-					}					
-				}
-			}while(!flag);
+		data = fopen("./temp/data.bin", "w+b");
+	}else
+		fseek(data, 0, FINAL);	
 	
-		}
-		fclose(data);
-	}
-
+	fwrite(&tamanhoRegistro, sizeof(int), 1, data);
+	fwrite(&buffer, sizeof(char), tamanhoRegistro, data);
+	
+	fclose(data);
+	
 	printf("Registro [%s, %s, %s, %s] inserido com sucesso!\n", registro.cod, registro.nome, registro.seg, registro.tipo);
 }
 
@@ -214,9 +179,7 @@ void hexDump(size_t offset, void *addr, int len){
             offset += (i % 16 == 0) ? 16 : i % 16;
         }
 
-        printf("%02x", pc[i]);
-        if ((i % 2) == 1)
-            printf(" ");
+        printf("%02x ", pc[i]);
 
         if ((pc[i] < 0x20) || (pc[i] > 0x7e)){
             bufferLine[i % 16] = '.';
@@ -226,34 +189,29 @@ void hexDump(size_t offset, void *addr, int len){
 
         bufferLine[(i % 16) + 1] = '\0';
     }
-
-    while ((i % 16) != 0){
-        printf("  ");
-        if (i % 2 == 1)
-            putchar(' ');
-        i++;
-    }
     
-    printf(" %s\n", bufferLine);
+    printf("  %s\n", bufferLine);
 }
 
-void obtemCache(int indiceRegistro, int indiceCodigo, int indiceNome){
+void obtemCache(int* indiceRegistro, int* indiceCodigo, int* indiceNome){
 	FILE* cache;
 	
 	cache = fopen("./temp/cache.bin", "r+b");
 	
 	if(cache == NULL){
 		cache = fopen("./temp/cache.bin", "w+b");
-		int x=0;
-		fwrite(&x, sizeof(int), 1, cache);
-		fwrite(&x, sizeof(int), 1, cache);
-		fwrite(&x, sizeof(int), 1, cache);
+		indiceRegistro = 0;
+		indiceCodigo = 0;
+		indiceNome = 0;
+		fwrite(&indiceRegistro, sizeof(int), 1, cache);
+		fwrite(&indiceCodigo, sizeof(int), 1, cache);
+		fwrite(&indiceNome, sizeof(int), 1, cache);
 		printf("Cache criado!\n");
 	}else{
-		fread(&indiceRegistro, sizeof(int), 1, cache);
-		fread(&indiceCodigo, sizeof(int), 1, cache);
-		fread(&indiceNome, sizeof(int), 1, cache);
-		printf("Cache obtido! [%d, %d, %d]\n", indiceRegistro, indiceCodigo, indiceNome);
+		fread(indiceRegistro, sizeof(int), 1, cache);
+		fread(indiceCodigo, sizeof(int), 1, cache);
+		fread(indiceNome, sizeof(int), 1, cache);
+		printf("Cache obtido! [%d, %d, %d]\n", *indiceRegistro, *indiceCodigo, *indiceNome);
 	}
 	
 	fclose(cache);
