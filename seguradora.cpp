@@ -2,6 +2,7 @@
 #include <conio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <dirent.h>
 
 #define INICIO 0
 #define ATUAL 1
@@ -29,33 +30,25 @@ void pesquisaCodigo(char cod[3]);
 void pesquisaNome(char nome[50]);
 void carregaArquivos();
 void hexDump(size_t, void *, int);
-void atualizaCache(int indiceInsere, int indiceRemove);
+void obtemCache(int indiceRegistro, int indiceCodigo, int indiceNome);
+void atualizaCache(int indiceRegistro, int indiceCodigo, int indiceNome);
 
 int main(void)
 {
 	int escolha=0;
-	int indiceRegistro = 0;
-	int indiceCodigo = 0;
+	int indiceRegistro;
+	int indiceCodigo;
+	int indiceNome;
 	char arqv[100];
 	
-	/*FILE *cache;
+	DIR* temp = opendir("temp");
 	
-	cache = fopen("cache.bin", "r+b");
+	if(temp)
+		closedir(temp);
+	else
+		mkdir("temp");
 	
-	if(cache== NULL){
-		cache = fopen("cache.bin", "w+b");
-		fprintf(cache, "%d", 0);
-		fprintf(cache, "%d", 0);
-		fclose(cache);
-		printf("Cache criado! Se voce interromper o programa a qualquer momento, suas insercoes estarao salvas.\n");
-	}else{
-		cache = fopen("cache.bin", "r+b");
-		fscanf (cache, "%1d", &indiceRegistro);
-		fseek(cache, 1, SEEK_SET );
-		fscanf (cache, "%1d", &indiceCodigo);
-		fclose(cache);
-		printf("Cache carregado! Se voce interromper o programa a qualquer momento, suas insercoes estarao salvas.\n");
-	}*/
+	obtemCache(indiceRegistro, indiceCodigo, indiceNome);
 	
 	printf("///////////////  SISTEMA DE REGISTRO DE SEGURADORAS  ///////////////\n");
 	printf("///////////////                MENU                  ///////////////\n");
@@ -65,6 +58,7 @@ int main(void)
 	printf("///////////////  4. DUMP DE ARQUIVO                  ///////////////\n");
 	printf("///////////////  5. CARREGAR ARQUIVOS                ///////////////\n");
 	printf("/////////////// -1. SAIR                             ///////////////\n\n$ ");
+	
 	while(escolha != -1){
 		scanf("%d", &escolha);
 		if(escolha == -1) break;
@@ -72,7 +66,7 @@ int main(void)
 			case 1:
 				insereRegistro(registros[indiceRegistro]);
 				indiceRegistro++;
-				atualizaCache(indiceRegistro,indiceCodigo);
+				atualizaCache(indiceRegistro, indiceCodigo, indiceNome);
 				break;
 			case 2:
 				//TODO pesquisa por codigo
@@ -207,17 +201,6 @@ void carregaArquivos(){
 	printf("Dados carregados com sucesso!\n");
 }
 
-void atualizaCache(int indiceInsere, int indiceRemove){			
-	FILE *cache;
-	
-	cache = fopen("cache.bin", "w+b");
-	fseek(cache, 0, INICIO);
-	
-	fprintf(cache, "%d", indiceInsere);
-	fprintf(cache, "%d", indiceRemove);
-	
-	fclose(cache);
-}
 void hexDump(size_t offset, void *addr, int len){
     int i;
     unsigned char bufferLine[17];
@@ -252,4 +235,38 @@ void hexDump(size_t offset, void *addr, int len){
     }
     
     printf(" %s\n", bufferLine);
+}
+
+void obtemCache(int indiceRegistro, int indiceCodigo, int indiceNome){
+	FILE* cache;
+	
+	cache = fopen("./temp/cache.bin", "r+b");
+	
+	if(cache == NULL){
+		cache = fopen("./temp/cache.bin", "w+b");
+		int x=0;
+		fwrite(&x, sizeof(int), 1, cache);
+		fwrite(&x, sizeof(int), 1, cache);
+		fwrite(&x, sizeof(int), 1, cache);
+		printf("Cache criado!\n");
+	}else{
+		fread(&indiceRegistro, sizeof(int), 1, cache);
+		fread(&indiceCodigo, sizeof(int), 1, cache);
+		fread(&indiceNome, sizeof(int), 1, cache);
+		printf("Cache obtido! [%d, %d, %d]\n", indiceRegistro, indiceCodigo, indiceNome);
+	}
+	
+	fclose(cache);
+}
+
+void atualizaCache(int indiceRegistro, int indiceCodigo, int indiceNome){
+	FILE *cache;
+	
+	cache = fopen("./temp/cache.bin", "w+b");
+	
+	fwrite(&indiceRegistro, sizeof(int), 1, cache);
+	fwrite(&indiceCodigo, sizeof(int), 1, cache);
+	fwrite(&indiceNome, sizeof(int), 1, cache);
+	
+	fclose(cache);
 }

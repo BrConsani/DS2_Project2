@@ -1,3 +1,2 @@
 *.exe
-data.bin
-cache.bin
+/temp
