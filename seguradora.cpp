@@ -6,6 +6,9 @@
 #include <sys/stat.h>  //for linux
 #include <sys/types.h> //for linux
 
+#define TRUE 1
+#define FALSE 0
+
 #define INICIO 0
 #define ATUAL 1
 #define FINAL 2
@@ -19,8 +22,9 @@ typedef struct reg {
 }Registro;
 
 Registro registros[8];
-char buscaCodigos[5][4];
-char buscaNomes[5];
+char buscaCodigos[7][4];
+char buscaNomes[5][50];
+int arquivosCarregados = FALSE;
 
 void insereRegistro(Registro registro);
 void pesquisaCodigo(char cod[3]);
@@ -62,25 +66,43 @@ int main(void){
 			case 1:
 				insereRegistro(registros[indiceRegistro]);
 				indiceRegistro++;
+				if(indiceRegistro == 8){
+					printf("Todos os registros foram adicionados, voltando para o index 0...\n");
+					indiceRegistro = 0;
+				}
 				atualizaCache(indiceRegistro, indiceCodigo, indiceNome);
 				break;
 			case 2:
 				pesquisaCodigo(buscaCodigos[indiceCodigo]);
 				indiceCodigo++;
+				if(indiceCodigo == 7){
+					printf("Todos os codigos foram buscados, voltando para o index 0...\n");
+					indiceCodigo = 0;
+				}
 				atualizaCache(indiceRegistro, indiceCodigo, indiceNome);
 				break;
 			case 3:
-				//TODO pesquisa por nome
+				pesquisaNome(buscaNomes[indiceNome]);
+				indiceNome++;
+				if(indiceNome == 5){
+					printf("Todos os nomes foram buscados, voltando para o index 0...\n");
+					indiceNome = 0;
+				}
+				atualizaCache(indiceRegistro, indiceCodigo, indiceNome);
 				break;
 			case 4: { 
 				FILE *myfile;
 				int c;
 				
 				printf("Escolha o arquivo para fazer o dump:\n\n");
-				printf(" 1. data.bin\n");
-				printf(" 2. cache.bin\n");
-				printf(" 3. codes.bin\n");
-				printf(" 4. names.bin\n");
+				if(fopen("./temp/data.bin", "rb") != NULL)
+					printf(" 1. data.bin\n");
+				if(fopen("./temp/cache.bin", "rb") != NULL)
+					printf(" 2. cache.bin\n");
+				if(fopen("./temp/codes.bin", "rb") != NULL)
+					printf(" 3. codes.bin\n");
+				if(fopen("./temp/names.bin", "rb") != NULL)
+					printf(" 4. names.bin\n");
 				printf("-1. RETORNAR\n\n");
 				printf("$ ");
 				
@@ -126,6 +148,11 @@ int main(void){
 }
 
 void insereRegistro(Registro registro){
+	if(arquivosCarregados == FALSE){
+		printf("Voce nao carregou arquivos, tente carregar!\n");
+		return;
+	}
+
 	char buffer[sizeof(Registro)];
 	
 	sprintf(buffer, "%s#%s#%s#%s", registro.cod, registro.nome, registro.seg, registro.tipo);
@@ -158,7 +185,6 @@ void insereRegistro(Registro registro){
 	}else
 		fseek(index, 0, FINAL);
 	
-	
 	fwrite(&registro.cod, sizeof(char), 3, index);
 	int posicaoCod = ftell(index);
 	fwrite(&posicaoData, sizeof(int), 1, index);
@@ -184,6 +210,10 @@ void insereRegistro(Registro registro){
 }
 
 void pesquisaCodigo(char cod[3]){
+	if(arquivosCarregados == FALSE){
+		printf("Voce nao carregou arquivos, tente carregar!\n");
+		return;
+	}
 
 	FILE *index;
 
@@ -231,6 +261,64 @@ void pesquisaCodigo(char cod[3]){
 }
 
 void pesquisaNome(char nome[50]){
+	if(arquivosCarregados == FALSE){
+		printf("Voce nao carregou arquivos, tente carregar!\n");
+		return;
+	}
+
+	FILE *names;
+
+	names = fopen("./temp/names.bin", "rb");
+
+	if(names == NULL){
+		printf("Arquivo names.bin ainda nao existe, tente adicionar um registro!\n");
+		return;
+	}
+
+	char bufferedName[50];
+	
+	while(strcmp(bufferedName, nome)){
+		fread(&bufferedName, sizeof(char), 50, names);
+		fseek(names, sizeof(int), ATUAL);
+		if(feof(names)) return;
+	}
+
+	if(feof(names)){
+		printf("Nome nao encontrado!");
+		return;
+	}
+
+	int offset;
+	fseek(names, -sizeof(int), ATUAL);
+	fread(&offset, sizeof(int), 1, names);
+
+	fclose(names);
+
+	FILE *index;
+
+	index = fopen("./temp/codes.bin", "rb");
+
+	fseek(index, offset, INICIO);
+
+	fread(&offset, sizeof(int), 1, index);
+
+	fclose(index);
+
+	FILE *data;
+
+	data = fopen("./temp/data.bin", "rb");
+
+	fseek(data, offset, INICIO);
+	
+	int size;
+	fread(&size, sizeof(int), 1, data);
+
+	char registro[size];
+	fread(&registro, sizeof(char), size, data);
+
+	fclose(data);
+
+	printf("O registro referente ao nome %s eh: %s\n", nome, registro);
 }
 
 void carregaArquivos(){
@@ -243,16 +331,17 @@ void carregaArquivos(){
 	FILE *codigos;
 	
 	codigos = fopen("./temp-testes/busca_p.bin", "r+b");
-	fread(&buscaCodigos, sizeof(char[5]), 1, codigos);
+	fread(&buscaCodigos, sizeof(char[4]), 7, codigos);
 	fclose(codigos);
-	
+
 	FILE *nomes;
 	
 	nomes = fopen("./temp-testes/busca_s.bin", "r+b");
-	fread(&buscaNomes, sizeof(char[7]), 1, nomes);
+	fread(&buscaNomes, sizeof(char[50]), 5, nomes);
 	fclose(nomes);
 	
 	printf("Dados carregados com sucesso!\n");
+	arquivosCarregados = TRUE;
 }
 
 void hexDump(size_t offset, void *addr, int len){
