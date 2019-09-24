@@ -1,5 +1,5 @@
 #include <stdio.h>
-//#include <conio.h> //for windows
+#include <conio.h> //for windows
 #include <stdlib.h>
 #include <string.h>
 #include <dirent.h>
@@ -69,8 +69,8 @@ int main(void)
 	if (temp)
 		closedir(temp);
 	else
-		mkdir("temp", 0777); //for linux
-							 //mkdir("temp") //for windows
+		//mkdir("temp", 0777); //for linux
+							 mkdir("temp"); //for windows
 
 	obtemCache(&indiceRegistro, &indiceCodigo, &indiceNome);
 
@@ -228,7 +228,7 @@ void insereRegistro(Registro registro)
 void pesquisaCodigo(char cod[3])
 {
 	if (arquivosCarregados == FALSE)
-	{ //precisa adicionar um outro, isso sim, pq 
+	{
 		printf("Voce nao carregou arquivos, tente carregar!\n");
 		return;
 	}
@@ -241,7 +241,7 @@ void pesquisaCodigo(char cod[3])
 		return;
 	}
 
-	int offset=-1; //acredito q ta funcionando testa ae
+	int offset=-1;
 	
 	while (aux)
 	{
@@ -282,47 +282,37 @@ void pesquisaNome(char nome[50])
 		return;
 	}
 
-	FILE *names;
+	Names* auxN = listaNomes;
 
-	names = fopen("./temp/names.bin", "rb");
-
-	if (names == NULL)
+	if (auxN == NULL)
 	{
-		printf("Arquivo names.bin ainda nao existe, tente adicionar um registro!\n");
+		printf("Voce ainda nao inseriu dados!\n");
 		return;
 	}
 
-	char bufferedName[50];
+	char cod[4];
 
-	while (strcmp(bufferedName, nome))
+	while (auxN)
 	{
-		fread(&bufferedName, sizeof(char), 50, names);
-		fseek(names, sizeof(int), ATUAL);
-		if (feof(names))
-			return;
+		if(strcmp(auxN->nome, nome) == 0){
+			strcpy(cod, auxN->offset);
+			break;
+		}
+		auxN = auxN->prox;
 	}
 
-	if (feof(names))
+	Codigo* aux = listaCodigos;
+
+	int offset=0;
+	
+	while (aux)
 	{
-		printf("Nome nao encontrado!");
-		return;
+		if(strcmp(aux->cod, cod) == 0){
+			offset = aux->offset;
+			break;
+		}
+		aux = aux->prox;
 	}
-
-	int offset;
-	fseek(names, -sizeof(int), ATUAL);
-	fread(&offset, sizeof(int), 1, names);
-
-	fclose(names);
-
-	FILE *index;
-
-	index = fopen("./temp/codes.bin", "rb");
-
-	fseek(index, offset, INICIO);
-
-	fread(&offset, sizeof(int), 1, index);
-
-	fclose(index);
 
 	FILE *data;
 
@@ -332,7 +322,7 @@ void pesquisaNome(char nome[50])
 
 	int size;
 	fread(&size, sizeof(int), 1, data);
-
+	
 	char registro[size];
 	fread(&registro, sizeof(char), size, data);
 
