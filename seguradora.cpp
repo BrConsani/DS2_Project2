@@ -228,42 +228,34 @@ void insereRegistro(Registro registro)
 void pesquisaCodigo(char cod[3])
 {
 	if (arquivosCarregados == FALSE)
-	{
+	{ //precisa adicionar um outro, isso sim, pq 
 		printf("Voce nao carregou arquivos, tente carregar!\n");
 		return;
 	}
 
-	FILE *index;
+	Codigo* aux = listaCodigos;
 
-	index = fopen("./temp/codes.bin", "rb");
-
-	if (index == NULL)
+	if (aux == NULL)
 	{
-		printf("Arquivo codes.bin ainda nao existe, tente adicionar um registro!\n");
+		printf("Voce ainda nao inseriu dados!\n");
 		return;
 	}
 
-	char bufferedCod[3];
-
-	while (strcmp(bufferedCod, cod))
+	int offset=-1; //acredito q ta funcionando testa ae
+	
+	while (aux)
 	{
-		fread(&bufferedCod, sizeof(char), 3, index);
-		fseek(index, sizeof(int), ATUAL);
-		if (feof(index))
-			return;
+		if(strcmp(aux->cod, cod) == 0){
+			offset = aux->offset;
+			break;
+		}
+		aux = aux->prox;
 	}
 
-	if (feof(index))
-	{
-		printf("Codigo nao encontrado!");
+	if(offset == -1){
+		printf("Nao encontramos o codigo %s.\n", cod);
 		return;
 	}
-
-	int offset;
-	fseek(index, -sizeof(int), ATUAL);
-	fread(&offset, sizeof(int), 1, index);
-
-	fclose(index);
 
 	FILE *data;
 
@@ -273,7 +265,7 @@ void pesquisaCodigo(char cod[3])
 
 	int size;
 	fread(&size, sizeof(int), 1, data);
-
+	
 	char registro[size];
 	fread(&registro, sizeof(char), size, data);
 
