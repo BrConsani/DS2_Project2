@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include <conio.h> //for windows
+//#include <conio.h> //for windows
 #include <stdlib.h>
 #include <string.h>
 #include <dirent.h>
@@ -69,8 +69,8 @@ int main(void)
 	if (temp)
 		closedir(temp);
 	else
-		//mkdir("temp", 0777); //for linux
-							 mkdir("temp"); //for windows
+		mkdir("temp", 0777); //for linux
+							 //mkdir("temp"); //for windows
 
 	obtemCache(&indiceRegistro, &indiceCodigo, &indiceNome);
 
@@ -191,7 +191,7 @@ void insereRegistro(Registro registro)
 	}
 
 	char buffer[sizeof(Registro)];
-	
+
 	sprintf(buffer, "%s#%s#%s#%s", registro.cod, registro.nome, registro.seg, registro.tipo);
 	int tamanhoRegistro = strlen(buffer);
 
@@ -233,7 +233,7 @@ void pesquisaCodigo(char cod[3])
 		return;
 	}
 
-	Codigo* aux = listaCodigos;
+	Codigo *aux = listaCodigos;
 
 	if (aux == NULL)
 	{
@@ -241,18 +241,20 @@ void pesquisaCodigo(char cod[3])
 		return;
 	}
 
-	int offset=-1;
-	
+	int offset = -1;
+
 	while (aux)
 	{
-		if(strcmp(aux->cod, cod) == 0){
+		if (strcmp(aux->cod, cod) == 0)
+		{
 			offset = aux->offset;
 			break;
 		}
 		aux = aux->prox;
 	}
 
-	if(offset == -1){
+	if (offset == -1)
+	{
 		printf("Nao encontramos o codigo %s.\n", cod);
 		return;
 	}
@@ -265,7 +267,7 @@ void pesquisaCodigo(char cod[3])
 
 	int size;
 	fread(&size, sizeof(int), 1, data);
-	
+
 	char registro[size];
 	fread(&registro, sizeof(char), size, data);
 
@@ -282,7 +284,7 @@ void pesquisaNome(char nome[50])
 		return;
 	}
 
-	Names* auxN = listaNomes;
+	Names *auxN = listaNomes;
 
 	if (auxN == NULL)
 	{
@@ -290,45 +292,57 @@ void pesquisaNome(char nome[50])
 		return;
 	}
 
-	char cod[4];
+	Codigo *codigosAux = NULL; //Lista encadeada para casos onde existem mais de um nome
 
 	while (auxN)
 	{
-		if(strcmp(auxN->nome, nome) == 0){
-			strcpy(cod, auxN->offset);
+		if (strcmp(auxN->nome, nome) == 0)
+		{
+			insert_indexCod(&codigosAux, auxN->offset, 0);
+			auxN = auxN->prox;
+			while (strcmp(auxN->nome, nome) == 0)
+			{
+				insert_indexCod(&codigosAux, auxN->offset, 0);
+				auxN = auxN->prox;
+			}
 			break;
 		}
 		auxN = auxN->prox;
 	}
 
-	Codigo* aux = listaCodigos;
-
-	int offset=0;
-	
-	while (aux)
+	while (codigosAux)
 	{
-		if(strcmp(aux->cod, cod) == 0){
-			offset = aux->offset;
-			break;
+		Codigo *aux = listaCodigos;
+
+		int offset = 0;
+
+		while (aux)
+		{
+			if (strcmp(aux->cod, codigosAux->cod) == 0)
+			{
+				offset = aux->offset;
+				break;
+			}
+			aux = aux->prox;
 		}
-		aux = aux->prox;
+
+		FILE *data;
+
+		data = fopen("./temp/data.bin", "rb");
+
+		fseek(data, offset, INICIO);
+
+		int size;
+		fread(&size, sizeof(int), 1, data);
+
+		char registro[size];
+		fread(&registro, sizeof(char), size, data);
+
+		fclose(data);
+
+		printf("O registro referente ao nome %s eh: %s\n", nome, registro);
+		codigosAux = codigosAux->prox;
 	}
-
-	FILE *data;
-
-	data = fopen("./temp/data.bin", "rb");
-
-	fseek(data, offset, INICIO);
-
-	int size;
-	fread(&size, sizeof(int), 1, data);
-	
-	char registro[size];
-	fread(&registro, sizeof(char), size, data);
-
-	fclose(data);
-
-	printf("O registro referente ao nome %s eh: %s\n", nome, registro);
 }
 
 void carregaArquivos()
@@ -442,7 +456,7 @@ void insert_indexCod(Codigo **root, char code[4], int offset)
 	Codigo *new_node = (Codigo *)malloc(sizeof(Codigo));
 
 	strcpy(new_node->cod, code);
-	new_node->offset = offset; 
+	new_node->offset = offset;
 
 	if (*root == NULL)
 	{
@@ -451,7 +465,7 @@ void insert_indexCod(Codigo **root, char code[4], int offset)
 	}
 	else
 	{
-		new_node->prox = *root; 
+		new_node->prox = *root;
 		*root = new_node;
 	}
 }
@@ -459,7 +473,7 @@ void insert_indexCod(Codigo **root, char code[4], int offset)
 void insert_indexName(Names **root, char name[50], char cod[4])
 {
 	Names *temp = NULL;
-	Names *new_node = (Names*)malloc(sizeof(Names));
+	Names *new_node = (Names *)malloc(sizeof(Names));
 
 	strcpy(new_node->nome, name);
 	strcpy(new_node->offset, cod);
@@ -471,7 +485,7 @@ void insert_indexName(Names **root, char name[50], char cod[4])
 	}
 	else
 	{
-		new_node->prox = *root; 
+		new_node->prox = *root;
 		*root = new_node;
 	}
 }
@@ -513,7 +527,7 @@ void bubble_sort_indexName(Names *temp)
 		while (help)
 		{
 
-			if (help->prox && strcmp(help->nome, help->prox->nome) > 0) 
+			if (help->prox && strcmp(help->nome, help->prox->nome) > 0)
 			{
 				strcpy(swap_data_cod, help->offset);
 				strcpy(swap_data_name, help->nome);
