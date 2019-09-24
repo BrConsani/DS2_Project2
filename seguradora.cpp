@@ -56,6 +56,7 @@ void insert_indexName(Names **root, char name[50], char code[4]);
 void bubble_sort_indexName(Names *);
 void show_data_cod(Codigo *);
 void show_data_names(Names *);
+void salvarIndex();
 
 int main(void)
 {
@@ -81,13 +82,16 @@ int main(void)
 	printf("///////////////  3. PESQUISAR POR NOME               ///////////////\n");
 	printf("///////////////  4. DUMP DE ARQUIVO                  ///////////////\n");
 	printf("///////////////  5. CARREGAR ARQUIVOS                ///////////////\n");
-	printf("/////////////// -1. SAIR                             ///////////////\n\n$ ");
+	printf("/////////////// -1. SALVAR E SAIR                    ///////////////\n\n$ ");
 
 	while (escolha != -1)
 	{
 		scanf("%d", &escolha);
 		if (escolha == -1)
+		{
+			salvarIndex();
 			break;
+		}
 		switch (escolha)
 		{
 		case 1:
@@ -581,4 +585,30 @@ void show_data_names(Names *temp)
 		}
 		printf("\n");
 	}
+}
+
+void salvarIndex()
+{
+	FILE *codes;
+	codes = fopen("./temp/codes.bin", "wb");
+
+	while (listaCodigos)
+	{
+		fwrite(&(listaCodigos->cod), sizeof(char), 3, codes);
+		fwrite(&(listaCodigos->offset), sizeof(int), 1, codes);
+		listaCodigos = listaCodigos->prox;
+	}
+	fclose(codes);
+	printf("a");
+	FILE *names;
+	names = fopen("./temp/names.bin", "wb");
+
+	while (listaNomes)
+	{
+		fwrite(&(listaNomes->nome), sizeof(char), 50, names);
+		fwrite(&(listaNomes->offset), sizeof(char), 3, names);
+		listaNomes = listaNomes->prox;
+	}
+	fclose(names);
+	printf("a");
 }
