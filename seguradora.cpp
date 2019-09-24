@@ -52,9 +52,10 @@ void obtemCache(int *indiceRegistro, int *indiceCodigo, int *indiceNome);
 void atualizaCache(int indiceRegistro, int indiceCodigo, int indiceNome);
 void insert_indexCod(Codigo **root, char code[4], int offset);
 void bubble_sort_indexCod(Codigo *);
-void insert_indexName(Names **root, char code[50], int offset);
+void insert_indexName(Names **root, char name[50], char code[4]);
 void bubble_sort_indexName(Names *);
-void show_data(Codigo *);
+void show_data_cod(Codigo *);
+void show_data_names(Names *);
 
 int main(void)
 {
@@ -190,7 +191,7 @@ void insereRegistro(Registro registro)
 	}
 
 	char buffer[sizeof(Registro)];
-
+	
 	sprintf(buffer, "%s#%s#%s#%s", registro.cod, registro.nome, registro.seg, registro.tipo);
 	int tamanhoRegistro = strlen(buffer);
 
@@ -215,39 +216,11 @@ void insereRegistro(Registro registro)
 
 	insert_indexCod(&listaCodigos, registro.cod, posicaoData);
 	bubble_sort_indexCod(listaCodigos);
+	show_data_cod(listaCodigos);
 
-	show_data(listaCodigos);
-
-	/*FILE *index;
-
-	index = fopen("./temp/codes.bin", "r+b");
-
-	if(index == NULL){
-		printf("Arquivo codes.bin criado!\n");
-		index = fopen("./temp/codes.bin", "w+b");
-	}else
-		fseek(index, 0, FINAL);
-	
-	fwrite(&registro.cod, sizeof(char), 3, index);
-	int posicaoCod = ftell(index);
-	fwrite(&posicaoData, sizeof(int), 1, index);
-
-	fclose(index);
-
-	FILE *names;
-
-	names = fopen("./temp/names.bin", "r+b");
-
-	if(names == NULL){
-		printf("Arquivo names.bin criado!\n");
-		names = fopen("./temp/names.bin", "w+b");
-	}else
-		fseek(names, 0, FINAL);
-	
-	fwrite(&registro.nome, sizeof(char), 50, names);
-	fwrite(&posicaoCod, sizeof(int), 1, names);
-
-	fclose(names);*/
+	insert_indexName(&listaNomes, registro.nome, registro.cod);
+	bubble_sort_indexName(listaNomes);
+	show_data_names(listaNomes);
 
 	printf("Registro [%s, %s, %s, %s] inserido com sucesso!\n", registro.cod, registro.nome, registro.seg, registro.tipo);
 }
@@ -487,23 +460,37 @@ void insert_indexCod(Codigo **root, char code[4], int offset)
 	Codigo *new_node = (Codigo *)malloc(sizeof(Codigo));
 
 	strcpy(new_node->cod, code);
-	new_node->offset = offset;
-	new_node->prox = NULL;
+	new_node->offset = offset; 
 
 	if (*root == NULL)
 	{
+		new_node->prox = NULL;
 		*root = new_node;
 	}
 	else
 	{
-		temp = *root;
+		new_node->prox = *root; 
+		*root = new_node;
+	}
+}
 
-		while (temp->prox)
-		{
-			temp = temp->prox;
-		}
+void insert_indexName(Names **root, char name[50], char cod[4])
+{
+	Names *temp = NULL;
+	Names *new_node = (Names*)malloc(sizeof(Names));
 
-		temp->prox = new_node;
+	strcpy(new_node->nome, name);
+	strcpy(new_node->offset, cod);
+
+	if (*root == NULL)
+	{
+		new_node->prox = NULL;
+		*root = new_node;
+	}
+	else
+	{
+		new_node->prox = *root; 
+		*root = new_node;
 	}
 }
 
@@ -527,59 +514,75 @@ void bubble_sort_indexCod(Codigo *temp)
 				strcpy(help->prox->cod, swap_data_cod);
 				help->prox->offset = swap_data_offset;
 			}
-			/*Move next node of linked list*/
 			help = help->prox;
 		}
-		/*Move next node of linked list*/
 		temp = temp->prox;
 	}
 }
 
-void show_data(Codigo *temp)
+void bubble_sort_indexName(Names *temp)
+{
+	Names *help = NULL, *store = temp;
+	char swap_data_cod[4];
+	char swap_data_name[50];
+	while (temp)
+	{
+		help = store;
+		while (help)
+		{
+
+			if (help->prox && strcmp(help->nome, help->prox->nome) > 0) 
+			{
+				strcpy(swap_data_cod, help->offset);
+				strcpy(swap_data_name, help->nome);
+				strcpy(help->offset, help->prox->offset);
+				strcpy(help->nome, help->prox->nome);
+				strcpy(help->prox->offset, swap_data_cod);
+				strcpy(help->prox->nome, swap_data_name);
+			}
+			help = help->prox;
+		}
+		temp = temp->prox;
+	}
+}
+
+void show_data_cod(Codigo *temp)
 {
 
 	if (temp == NULL)
 	{
-		/*linked list are empty*/
+		printf("\nEmpty linked List\n");
+	}
+	else
+	{
+		printf("Print Index_cod:\n\n");
+		while (temp)
+		{
+			printf("%s  ", temp->cod);
+			printf("%d\n", temp->offset);
+			temp = temp->prox;
+		}
+		printf("\n");
+	}
+}
+
+void show_data_names(Names *temp)
+{
+
+	if (temp == NULL)
+	{
+
 		printf("Empty linked List\n");
 	}
 	else
 	{
-		/*When linked list are not empty*/
-		printf("linked list :");
+		printf("Index_name:\n\n");
 		while (temp)
 		{
-			/*Print linked list data*/
-			printf("\n%s\n\n\n  ", temp->cod);
-			printf("%d\n\n\n  ", temp->offset);
-			/*Move next memory block*/
+			printf("%s ", temp->nome);
+			printf("%s\n", temp->offset);
 			temp = temp->prox;
 		}
-	}
-}
-
-void insert_indexNamess(Codigo **root, char code[4], int offset)
-{
-	Codigo *temp = NULL;
-	Codigo *new_node = (Codigo *)malloc(sizeof(Codigo));
-
-	strcpy(new_node->cod, code);
-	new_node->offset = offset;
-	new_node->prox = NULL;
-
-	if (*root == NULL)
-	{
-		*root = new_node;
-	}
-	else
-	{
-		temp = *root;
-
-		while (temp->prox)
-		{
-			temp = temp->prox;
-		}
-
-		temp->prox = new_node;
+		printf("\n");
 	}
 }
